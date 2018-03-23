@@ -31,6 +31,8 @@ spec:
           env:
             - name: STATUS_PORT
               value: {{ .Values.service.internalPort | quote }}
+            - name: APP_NAME
+              value: {{ .Chart.Name | quote }}
             - name: POD_NAMESPACE
               valueFrom:
                 fieldRef:

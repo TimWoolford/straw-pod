@@ -1,20 +1,17 @@
 package server
 
 import (
-	"net/http"
 	"encoding/json"
-	"os"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/gorilla/mux"
 	"github.com/TimWoolford/straw-pod/internal/status"
-
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/kubernetes"
-	"io/ioutil"
-	"fmt"
-	"strconv"
 )
 
 type server struct {
@@ -35,15 +32,8 @@ func Start() {
 		panic(err.Error())
 	}
 
-	port, _ := strconv.Atoi(os.Getenv("STATUS_PORT"))
 	server := server{
-		status: status.Status{
-			ApplicationVersion: "1.0",
-			Hostname:           os.Getenv("HOSTNAME"),
-			Namespace:          os.Getenv("POD_NAMESPACE"),
-			Port:               port,
-			OverallStatus:      "OK",
-		},
+		status:    status.MakeMe(),
 		clientSet: clientSet,
 	}
 
@@ -54,8 +44,10 @@ func Start() {
 	r.HandleFunc("/pods", server.Pods).Methods("GET")
 	r.HandleFunc("/pods", server.UpdatePods).Methods("PUT")
 
+	r.PathPrefix("/").Handler( http.FileServer(http.Dir("/html")))
+
 	http.Handle("/", r)
-	http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+	http.ListenAndServe(fmt.Sprintf(":%d", server.status.Port()), nil)
 }
 
 func (s *server) StatusHandler(w http.ResponseWriter, r *http.Request) {
@@ -72,7 +64,7 @@ func (s *server) SetStatusHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) Pods(w http.ResponseWriter, r *http.Request) {
-	pods, err := s.clientSet.CoreV1().Pods(s.status.Namespace).List(metaV1.ListOptions{})
+	pods, err := s.clientSet.CoreV1().Pods(s.status.Namespace()).List(metaV1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}
@@ -81,7 +73,7 @@ func (s *server) Pods(w http.ResponseWriter, r *http.Request) {
 
 	for _, pod := range pods.Items {
 		if pod.Labels["app_name"] == "straw-pod" {
-			resp, getErr := http.Get(fmt.Sprintf("http://%s:%d/status", pod.Status.PodIP, s.status.Port))
+			resp, getErr := http.Get(fmt.Sprintf("http://%s:%d/status", pod.Status.PodIP, s.status.Port()))
 			if getErr != nil {
 				panic(getErr)
 			}
@@ -105,8 +97,8 @@ func (s *server) UpdatePods(w http.ResponseWriter, r *http.Request) {
 		if pod == s.status.Hostname {
 			s.status.OverallStatus = newStatus
 		} else {
-			thePod, _ := s.clientSet.CoreV1().Pods(s.status.Namespace).Get(pod, metaV1.GetOptions{})
-			request, _ := http.NewRequest("PUT", fmt.Sprintf("http://%s:%d/setStatus/%s", s.status.Port, thePod.Status.PodIP, newStatus), nil)
+			thePod, _ := s.clientSet.CoreV1().Pods(s.status.Namespace()).Get(pod, metaV1.GetOptions{})
+			request, _ := http.NewRequest("PUT", fmt.Sprintf("http://%s:%d/setStatus/%s", s.status.Port(), thePod.Status.PodIP, newStatus), nil)
 
 			client := &http.Client{}
 
