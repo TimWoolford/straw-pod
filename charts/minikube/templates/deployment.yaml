@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    {{- include "labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app_name: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        {{- include "labels" . | indent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: {{ .Values.image.tag }}
+          imagePullPolicy: Never
+          ports:
+            - containerPort: {{ .Values.service.internalPort }}
+          livenessProbe:
+            httpGet:
+              path: /status
+              port: {{ .Values.service.internalPort }}
+          readinessProbe:
+            httpGet:
+              path: /status
+              port: {{ .Values.service.internalPort }}
+          env:
+            - name: STATUS_PORT
+              value: {{ .Values.service.internalPort | quote }}
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace

@@ -1,0 +1,8 @@
+replicaCount: 3
+
+service:
+  externalPort: 8011
+  internalPort: 8011
+
+image:
+  tag: 'timwoolford/straw-pod:0.1.0'

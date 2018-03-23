@@ -1,0 +1,15 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    {{- include "labels" . | indent 4 }}
+spec:
+  rules:
+    - host: {{ .Chart.Name }}.minikube
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: {{ .Chart.Name }}
+              servicePort: {{ .Values.service.externalPort }}
