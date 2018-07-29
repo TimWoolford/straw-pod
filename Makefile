@@ -21,7 +21,7 @@ build:
 	docker run --rm \
 	 -v "${PWD}":${PKG} \
 	 -w ${PKG} \
-	 golang:1.9 \
+	 golang:1.10 \
 	 make gobuild
 
 .PHONY: build-image
@@ -37,10 +37,7 @@ clean: ; $(info $(M) cleaning…)
 	@docker images -q ${APP} | xargs docker rmi -f
 	@rm -rf bin/*
 
-.PHONY: vendor
-vendor: .vendor
-
-.vendor: Gopkg.toml Gopkg.lock
+vendor: Gopkg.toml Gopkg.lock
 	command -v dep >/dev/null 2>&1 || go get github.com/golang/dep/cmd/dep
 	$(GODEP) ensure -v
 	@touch $@
